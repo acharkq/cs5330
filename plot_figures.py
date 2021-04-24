@@ -8,7 +8,7 @@ import matplotlib.cm as cm
 
 
 @torch.no_grad()
-def experiment(distribution_name):
+def high_dimensional_mean_estimation(distribution_name):
     #### set up constants, parameters, and models
     delta = 0.05
     N = 20000
@@ -80,4 +80,4 @@ def experiment(distribution_name):
     plt.cla()
 
 if __name__ == '__main__':
-    experiment('Burr')
+    high_dimensional_mean_estimation('Burr')
