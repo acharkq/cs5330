@@ -236,16 +236,16 @@ if __name__ == '__main__':
     # estimator = CoordTruncMeans(0.01)
     estimator = EmpiricalMean()
     data_generator.reset()
-    evaluate(data_generator, estimator, 10000, 64, True)
+    evaluate(data_generator, estimator, 10000, 256, True)
     
     estimator = CoordTruncMeans(0.05)
     data_generator.reset()
-    evaluate(data_generator, estimator, 10000, 64, True)
+    evaluate(data_generator, estimator, 10000, 256, True)
 
     estimator = CatoniGiulini(0.05, False)
     data_generator.reset()
-    evaluate(data_generator, estimator, 10000, 64, True)
+    evaluate(data_generator, estimator, 10000, 256, True)
 
     estimator = CatoniGiulini(0.05, True)
     data_generator.reset()
-    evaluate(data_generator, estimator, 10000, 64, True)
+    evaluate(data_generator, estimator, 10000, 256, True)
