@@ -3,7 +3,7 @@ import numpy as np
 import json
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from models import evaluate, CatoniGiulini, CoordTruncMeans, HDMoM, LogNormal, Burr
+from models import evaluate, CatoniGiulini, CoordTruncMeans, HDMoM, LogNormal, Burr, EmpiricalMean
 import matplotlib.cm as cm
 
 
@@ -15,8 +15,10 @@ def high_dimensional_mean_estimation(distribution_name):
     dimensions = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
     data_generators = {'LogNormal': LogNormal(3, 1, random_state=1001), 'Burr': Burr(1.2, 10, random_state=1001)}
 
-    model_names = ['CatoniGiulini two-phase', 'CatoniGiulini one-phase', 'Coordinate-wise Truncated Mean', 'HDMoM geometric median', 'HDMoM coordinative-wise median']
-    models = [CatoniGiulini(delta, True), CatoniGiulini(delta, False), CoordTruncMeans(delta), HDMoM(delta, True), HDMoM(delta, False)]
+    model_names = ['EmpiricalMean', 'CatoniGiulini two-phase', 'CatoniGiulini one-phase', 'Coordinate-wise truncated mean', 'HDMoM geometric median', 'HDMoM coordinative-wise median']
+    models = [EmpiricalMean(), CatoniGiulini(delta, True), CatoniGiulini(delta, False), CoordTruncMeans(delta), HDMoM(delta, True), HDMoM(delta, False)]
+    model2markers = {'EmpiricalMean':'o', 'CatoniGiulini two-phase':'+', 'CatoniGiulini one-phase':'+', 'Coordinate-wise truncated mean':'+', 'HDMoM geometric median':'x', 'HDMoM coordinative-wise median':'x'}
+    # markers = ['.', '+', '+', '+', 'x', 'x']
     experimental_results = {model: [] for model in model_names}
 
     #### conduct experiments
@@ -39,9 +41,11 @@ def high_dimensional_mean_estimation(distribution_name):
     plt.xscale('log', base=2)
     colors = cm.rainbow(np.linspace(0, 1, len(models)))
     
+    marker_size = 20
+
     scatters = []
     for i, model_name in enumerate(model_names):
-        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i])
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
         scatters.append(l_i)
     plt.legend(scatters, model_names)
     plt.xlabel('Dimension')
@@ -54,11 +58,12 @@ def high_dimensional_mean_estimation(distribution_name):
     plt.rcParams["font.family"] = "Times New Roman"
     plt.xscale('log', base=2)
     scatters = []
-    for i, model_name in enumerate(model_names[:3]):
-        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i])
+    TrimmedMeanMethods = ['EmpiricalMean', 'CatoniGiulini two-phase', 'CatoniGiulini one-phase', 'Coordinate-wise truncated mean']
+    for i, model_name in enumerate(TrimmedMeanMethods):
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
         scatters.append(l_i)
         
-    plt.legend(scatters, model_names[:3])
+    plt.legend(scatters, TrimmedMeanMethods)
     plt.xlabel('Dimension')
     plt.ylabel('Error')
     plt.savefig('./figures/%sTrimmed.pdf' % distribution_name, dpi=300)
@@ -68,16 +73,17 @@ def high_dimensional_mean_estimation(distribution_name):
     plt.rcParams["font.family"] = "Times New Roman"
     plt.xscale('log', base=2)
     scatters = []
-    for i, model_name in enumerate(model_names[3:]):
+    HDMoMMethods = ['EmpiricalMean', 'HDMoM geometric median', 'HDMoM coordinative-wise median']
+    for i, model_name in enumerate(HDMoMMethods):
         i += 3
-        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i])
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
         scatters.append(l_i)
         
-    plt.legend(scatters, model_names[3:])
+    plt.legend(scatters, HDMoMMethods)
     plt.xlabel('Dimension')
     plt.ylabel('Error')
     plt.savefig('./figures/%sMoM.pdf' % distribution_name, dpi=300)
     plt.cla()
 
 if __name__ == '__main__':
-    high_dimensional_mean_estimation('Burr')
+    high_dimensional_mean_estimation('LogNormal')

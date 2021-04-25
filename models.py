@@ -4,6 +4,12 @@ import scipy.stats as stats
 import numpy as np
 import hdmedians as hd
 
+class EmpiricalMean(object):
+    def __init__(self):
+        pass
+    def estimate(self, X, device='cpu'):
+        X = X.to(device)
+        return torch.mean(X, dim=0)
 
 class HDMoM(object):
     def __init__(self, delta, geometric_median=True):
@@ -118,7 +124,6 @@ class CatoniGiulini(object):
         v = self._spectral_norm(X)
 
         lambda_ = self._lambda(N, v)
-        
         x_norm = torch.norm(X, p=2, dim=-1) # shape = [N]
         tmp_coefs = self._psi(x_norm * lambda_) / (x_norm * lambda_) # shape = [N]
         Y = tmp_coefs.unsqueeze(-1) * X # shape = [N, D]
@@ -128,11 +133,12 @@ class CatoniGiulini(object):
 
     def _spectral_norm(self, X):
         '''
-        return the largest eigenvalue of X.T @ X
+        return the largest eigenvalue of X.T @ X / N
         '''
+        N, D = X.shape
         x_mean = torch.mean(X, dim=0, keepdim=True) # shape = [1, D]
         X = X - x_mean # shape = [N, D]
-        eig_vals, _ = torch.eig(X.T @ X)
+        eig_vals, _ = torch.eig(X.T @ X / N)
         eig_vals = eig_vals[:, 0]
         v = float(max(eig_vals))
         return v
@@ -221,13 +227,25 @@ def evaluate(data_generator, estimator, N, D, verbose=False):
     return acc_euc_dis
 
 
-if __name__ == '__main__':
-    # np.random.seed(1000)
+if __name__ == '__main__':    
+    # evaluate(data_generator, estimator, 10000, 64, True)
+    # data_generator = Burr(1.2, 10, random_state=1001)
     data_generator = LogNormal(3, 1, random_state=1001)
-    print(data_generator.mean)
-    data_generator = Burr(1.2, 10, random_state=1001)
-    print(data_generator.mean)
-    estimator = HDMoM(0.01, False)
+    # estimator = HDMoM(0.01, False)
+
     # estimator = CoordTruncMeans(0.01)
-    # estimator = CatoniGiulini(0.01, two_phase=True)
-    # evaluate(data_generator, estimator, 20000, 20)
+    estimator = EmpiricalMean()
+    data_generator.reset()
+    evaluate(data_generator, estimator, 10000, 64, True)
+    
+    estimator = CoordTruncMeans(0.05)
+    data_generator.reset()
+    evaluate(data_generator, estimator, 10000, 64, True)
+
+    estimator = CatoniGiulini(0.05, False)
+    data_generator.reset()
+    evaluate(data_generator, estimator, 10000, 64, True)
+
+    estimator = CatoniGiulini(0.05, True)
+    data_generator.reset()
+    evaluate(data_generator, estimator, 10000, 64, True)
