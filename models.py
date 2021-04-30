@@ -1,6 +1,5 @@
 import math
 import torch
-import scipy.stats as stats
 import numpy as np
 import hdmedians as hd
 
@@ -155,48 +154,6 @@ class CatoniGiulini(object):
         return torch.clamp(x, min=None, max=1)
 
 
-class LogNormal(object):
-    '''
-    https://en.wikipedia.org/wiki/Log-normal_distribution
-    '''
-    def __init__(self, mu, sigma, random_state=0):
-        self.mu = mu
-        self.sigma = sigma
-        self.mean = np.exp(mu + sigma ** 2 / 2)
-        self.variance = (np.exp(sigma ** 2) - 1) * np.exp(2 * mu + sigma ** 2)
-        self.random_state = random_state
-        self._random_state = random_state
-
-    def reset(self,):
-        self._random_state = self.random_state
-
-    def sample(self, N, D):
-        np.random.seed(self._random_state)
-        self._random_state += 1
-        return np.random.lognormal(mean=self.mu, sigma=self.sigma, size=(N, D))
-
-
-class Burr(object):
-    '''
-    https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.burr.html#scipy.stats.burr
-    '''
-    def __init__(self, c, d, random_state=0):
-        self.c = c
-        self.d = d
-        self.mean = float(stats.burr.stats(c, d, moments='m'))
-        self.random_state = random_state
-        self._random_state = random_state
-
-    def reset(self,):
-        self._random_state = self.random_state
-
-    def sample(self, N, D):
-        np.random.seed(self._random_state)
-        self._random_state += 1
-        samples = np.random.uniform(0, 1, size=(N, D))
-        return stats.burr.ppf(samples, c=self.c, d=self.d)
-
-
 def euclidean_distance(x, y):
     return torch.sqrt(torch.sum((x - y) ** 2))
 
@@ -205,7 +162,7 @@ def evaluate(data_generator, estimator, N, D, verbose=False):
     '''
     use the average of the Euclidean distance as the evaluation metric
     '''
-    device = 'cuda:1'
+    device = 'cpu'
     epoch = 100  # number of experiments
     mu = torch.ones((D), device=device) * data_generator.mean
     
@@ -230,9 +187,10 @@ def evaluate(data_generator, estimator, N, D, verbose=False):
 if __name__ == '__main__':    
     # evaluate(data_generator, estimator, 10000, 64, True)
     # data_generator = Burr(1.2, 10, random_state=1001)
+    from dataset import LogNormal
     data_generator = LogNormal(3, 1, random_state=1001)
     # estimator = HDMoM(0.01, False)
-
+    
     # estimator = CoordTruncMeans(0.01)
     estimator = EmpiricalMean()
     data_generator.reset()

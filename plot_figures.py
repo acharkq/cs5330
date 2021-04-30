@@ -4,7 +4,8 @@ import json
 import scipy.stats as stats
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from models import evaluate, CatoniGiulini, CoordTruncMeans, HDMoM, LogNormal, Burr, EmpiricalMean
+from models import evaluate, CatoniGiulini, CoordTruncMeans, HDMoM, EmpiricalMean
+from dataset import LogNormal, Burr
 import matplotlib.cm as cm
 
 
@@ -23,17 +24,17 @@ def high_dimensional_mean_estimation(distribution_name):
     experimental_results = {model: [] for model in model_names}
 
     #### conduct experiments
-    if False:
+    if True:
         data_generator = data_generators[distribution_name]
         for model, model_name in tqdm(zip(models, model_names), total=len(models)):
             for D in dimensions:
                 data_generator.reset()
                 error = evaluate(data_generator, model, N, D)
                 experimental_results[model_name].append(error)
-        with open('./%sOut.json' % distribution_name, 'w') as f:
+        with open('./experiments/%sOut.json' % distribution_name, 'w') as f:
             json.dump(experimental_results, f)
     else:
-        with open('./%sOut.json' % distribution_name, 'r') as f:
+        with open('./experiments/%sOut.json' % distribution_name, 'r') as f:
             experimental_results = json.load(f)
     
     #### plots
@@ -114,8 +115,96 @@ def plot_distributions():
     fig.savefig('./figures/lognormal.pdf', dpi=300)
     ax.cla()
     print(burr.mean, log_normal.mean)
+    
 
+@torch.no_grad()
+def plot_contamination_figures(distribution_name):
+    #### set up constants, parameters, and models
+    delta = 0.05
+    N = 20000
+    dimensions = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
+    # dimensions = [1,] #[16, 32, 64,] # 128, 256, 512]
+    data_generators = {'LogNormal': LogNormal(3, 1, contamination_level=0.05, random_state=1001), 'Burr': Burr(1.2, 10, contamination_level=0.05, random_state=1001)}
+
+    model_names = ['EmpiricalMean', 'CatoniGiulini two-phase', 'CatoniGiulini one-phase', 'Coordinate-wise truncated mean', 'HDMoM geometric median', 'HDMoM coordinative-wise median']
+    models = [EmpiricalMean(), CatoniGiulini(delta, True), CatoniGiulini(delta, False), CoordTruncMeans(delta), HDMoM(delta, True), HDMoM(delta, False)]
+    model2markers = {'EmpiricalMean':'o', 'CatoniGiulini two-phase':'+', 'CatoniGiulini one-phase':'+', 'Coordinate-wise truncated mean':'+', 'HDMoM geometric median':'x', 'HDMoM coordinative-wise median':'x'}
+    experimental_results = {model: [] for model in model_names}
+
+    #### conduct experiments
+    if True:
+        data_generator = data_generators[distribution_name]
+        for model, model_name in tqdm(zip(models, model_names), total=len(models)):
+            for D in dimensions:
+                data_generator.reset()
+                error = evaluate(data_generator, model, N, D)
+                experimental_results[model_name].append(error)
+        with open('./experiments/%sContaminationOut.json' % distribution_name, 'w') as f:
+            json.dump(experimental_results, f)
+    else:
+        with open('./experiments/%sContaminationOut.json' % distribution_name, 'r') as f:
+            experimental_results = json.load(f)
+
+    #### plots
+    ## plot all methods
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.xscale('log', base=2)
+    colors = cm.rainbow(np.linspace(0, 1, len(models)))
+    
+    marker_size = 20
+
+    scatters = []
+    for i, model_name in enumerate(model_names):
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
+        scatters.append(l_i)
+    plt.legend(scatters, model_names, loc='upper left')
+    plt.xlabel('Dimension')
+    plt.ylabel('Error')
+    if distribution_name == 'LogNormal':
+        plt.ylim(0, 50)
+    plt.savefig('./figures/%sContaminationAll.pdf' % distribution_name, dpi=300)
+    plt.cla()
+
+
+    ## plot only trimmed mean based methods
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.xscale('log', base=2)
+    scatters = []
+    TrimmedMeanMethods = ['EmpiricalMean', 'CatoniGiulini two-phase', 'CatoniGiulini one-phase', 'Coordinate-wise truncated mean']
+    for i, model_name in enumerate(TrimmedMeanMethods):
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
+        scatters.append(l_i)
+        
+    plt.legend(scatters, TrimmedMeanMethods, loc='upper left')
+    plt.xlabel('Dimension')
+    plt.ylabel('Error')
+    if distribution_name == 'LogNormal':
+        plt.ylim(0, 50)
+    plt.savefig('./figures/%sContaminationTrimmed.pdf' % distribution_name, dpi=300)
+    plt.cla()
+
+    ## plot only MoM based methods
+    plt.rcParams["font.family"] = "Times New Roman"
+    plt.xscale('log', base=2)
+    scatters = []
+    HDMoMMethods = ['EmpiricalMean', 'HDMoM geometric median', 'HDMoM coordinative-wise median']
+    for i, model_name in enumerate(HDMoMMethods):
+        i += 3
+        l_i = plt.scatter(dimensions, experimental_results[model_name], color=colors[i], s=marker_size, marker=model2markers[model_name])
+        scatters.append(l_i)
+        
+    plt.legend(scatters, HDMoMMethods, loc='upper left')
+    plt.xlabel('Dimension')
+    plt.ylabel('Error')
+    if distribution_name == 'LogNormal':
+        plt.ylim(0, 50)
+    plt.savefig('./figures/%sContaminationMoM.pdf' % distribution_name, dpi=300)
+    plt.cla()
+        
 
 if __name__ == '__main__':
-    high_dimensional_mean_estimation('Burr')
-    # plot_distributions()
+    # high_dimensional_mean_estimation('Burr')
+    # high_dimensional_mean_estimation('LogNormal')
+    plot_contamination_figures('LogNormal')
+    plot_contamination_figures('Burr')
+    # for_qrme('Burr')
